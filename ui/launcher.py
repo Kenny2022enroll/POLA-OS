@@ -5,20 +5,18 @@ class Launcher:
         display
     ):
         self.display=display
-        self.apps=[
-            Timer()
-        ]
+        self.apps=Timer()
 
     def run(self):
         while True:
-            self.show_home()
-            # 测试直接打开第一个App
-            self.apps[0].draw(
+            self.display.clear()
+            self.draw_home()
+            self.apps.draw(
                 self.display
             )
+            self.display.update()
 
-    def show_home(self):
-        self.display.clear()
+    def draw_home(self):
         self.display.text(
             "POLA OS",
             25,
@@ -29,4 +27,3 @@ class Launcher:
             40,
             30
         )
-        self.display.update()
