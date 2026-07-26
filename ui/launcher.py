@@ -1,26 +1,19 @@
-from apps.timer import Timer
-
 class Launcher:
     def __init__(
         self,
         display,
-        scheduler
+        scheduler,
+        app_manager
     ):
-        self.display = display
-        self.scheduler = scheduler
-        self.app = Timer()
+        self.display=display
+        self.scheduler=scheduler
+        self.manager=app_manager
 
     def run(self):
         while True:
-            # 控制帧率
             self.scheduler.wait()
-            # 清屏
             self.display.clear()
-            # 更新
-            self.app.update()
-            # 绘制
             self.draw()
-            # 一次刷新
             self.display.update()
 
     def draw(self):
@@ -29,6 +22,12 @@ class Launcher:
             25,
             0
         )
-        self.app.draw(
-            self.display
-        )
+        apps=self.manager.get_apps()
+        y=20
+        for app in apps:
+            self.display.text(
+                app.name,
+                40,
+                y
+            )
+            y+=12
