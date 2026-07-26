@@ -3,11 +3,10 @@ import time
 
 class Timer(App):
 
-    name="Timer"
+        name="Timer"
 
-    def __init__(self):
+    def open(self):
         self.start=time.time()
-        self.value=0
 
     def update(self):
         self.value=int(
