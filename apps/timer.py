@@ -22,4 +22,3 @@ class Timer(App):
             55,
             30
         )
-        display.update()
