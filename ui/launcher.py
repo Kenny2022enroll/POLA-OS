@@ -1,3 +1,5 @@
+from apps.timer import Timer
+
 class Launcher:
     def __init__(
         self,
