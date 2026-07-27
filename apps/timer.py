@@ -23,3 +23,8 @@ class Timer(App):
             55,
             40
         )
+
+    def on_event(self,event):
+        from core.event import BUTTON_B
+        if event.type==BUTTON_B:
+            return "BACK"
