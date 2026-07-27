@@ -1,8 +1,7 @@
 from drivers.display import Display
 from core.scheduler import Scheduler
 from core.app_manager import AppManager
-from apps.timer import Timer
-from apps.settings import Settings
+from apps.registry import load_apps
 from ui.launcher import Launcher
 
 class Boot:
@@ -12,11 +11,8 @@ class Boot:
             fps=10
         )
         self.app_manager = AppManager()
-        self.app_manager.register(
-            Timer()
-        )
-        self.app_manager.register(
-            Settings()
+        self.app_manager.load(
+            load_apps()
         )
         self.launcher = Launcher(
             self.display,
