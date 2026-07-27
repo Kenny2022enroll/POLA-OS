@@ -1,13 +1,13 @@
-from mpython import *
+from mpython import button_a,button_b
 from core.event import Event
-from core.event import BUTTON_A, BUTTON_B
+from core.event import (
+    BUTTON_A,
+    BUTTON_B
+)
 
 class Input:
-    def __init__(
-        self,
-        event_manager
-    ):
-        self.events = event_manager
+    def __init__(self,event_manager):
+        self.events=event_manager
 
     def update(self):
         if button_a.value()==0:
