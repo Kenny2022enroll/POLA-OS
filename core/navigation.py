@@ -2,10 +2,7 @@ class Navigation:
     def __init__(self):
         self.stack=[]
 
-    def push(
-        self,
-        page
-    ):
+    def push(self,page):
         self.stack.append(page)
         page.open()
 
