@@ -6,12 +6,12 @@ class Display:
 
     def text(
         self,
-        content,
+        text,
         x,
         y
     ):
         oled.DispChar(
-            content,
+            text,
             x,
             y
         )

@@ -3,22 +3,23 @@ import time
 
 class Timer(App):
     name="Timer"
-    def __init__(self):
+    def open(self):
         self.start=time.time()
+        self.value=0
+
+    def update(self):
+        self.value=int(
+            time.time()-self.start
+        )
 
     def draw(self,display):
-        t=int(
-            time.time()
-            -
-            self.start
-        )
         display.text(
             "Timer",
             40,
-            10
+            20
         )
         display.text(
-            str(t),
+            str(self.value),
             55,
-            30
+            40
         )
