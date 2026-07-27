@@ -1,7 +1,4 @@
-from core.event import (
-    BUTTON_A,
-    BUTTON_B
-)
+from core.event import BUTTON_A
 
 class Launcher:
     def __init__(
@@ -12,43 +9,46 @@ class Launcher:
         events,
         input
     ):
-        self.display = display
-        self.scheduler = scheduler
-        self.manager = manager
-        self.events = events
-        self.input = input
-        self.index = 0
+        self.display=display
+        self.scheduler=scheduler
+        self.manager=manager
+        self.events=events
+        self.input=input
+        self.index=0
 
     def run(self):
         while True:
             self.scheduler.wait()
-            # 输入检测
             self.input.update()
-            # 处理事件
             self.handle_event()
-            # 绘制
             self.display.clear()
             self.draw()
             self.display.update()
 
     def handle_event(self):
-        event = self.events.poll()
+        event=self.events.poll()
         if event:
-            if event.type == BUTTON_A:
+            if event.type==BUTTON_A:
                 self.open_app()
 
     def open_app(self):
-        apps = self.manager.get_apps()
-        app = apps[self.index]
+        apps=self.manager.get_apps()
+        app=apps[self.index]
         app.open()
         while True:
+            self.scheduler.wait()
+            self.input.update()
+            event=self.events.poll()
+            if event:
+                if event.type=="button_b":
+                    app.close()
+                    break
             self.display.clear()
             app.update()
             app.draw(
                 self.display
             )
             self.display.update()
-            self.scheduler.wait()
 
     def draw(self):
         self.display.text(
@@ -56,12 +56,14 @@ class Launcher:
             25,
             0
         )
-        apps = self.manager.get_apps()
-        y = 20
+        apps=self.manager.get_apps()
+        y=20
         for i,app in enumerate(apps):
-            prefix="> " if i==self.index else "  "
+            text=app.name
+            if i==self.index:
+                text=">"+text
             self.display.text(
-                prefix+app.name,
+                text,
                 20,
                 y
             )
