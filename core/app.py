@@ -1,5 +1,5 @@
 class App:
-    name="APP"
+    name = "APP"
 
     def open(self):
         pass
@@ -7,17 +7,11 @@ class App:
     def update(self):
         pass
 
-    def on_event(
-        self,
-        event
-    ):
+    def on_event(self,event):
         pass
 
-    def draw(
-        self,
-        display
-    ):
+    def draw(self,display):
         pass
-        
+
     def close(self):
         pass
