@@ -1,30 +1,41 @@
 from core.app import App
+from ui.window import Window
+from ui.label import Label
 import time
 
 class Timer(App):
     name="Timer"
     def open(self):
+        self.window=Window()
+        self.title=Label(
+            "Timer",
+            45,
+            5
+        )
+        self.number=Label(
+            "0",
+            60,
+            30
+        )
+        self.window.add(
+            self.title
+        )
+        self.window.add(
+            self.number
+        )
         self.start=time.time()
-        self.value=0
 
     def update(self):
-        self.value=int(
-            time.time()-self.start
+        value=str(
+            int(
+                time.time()
+                -
+                self.start
+            )
         )
+        self.number.text=value
 
     def draw(self,display):
-        display.text(
-            "Timer",
-            40,
-            20
+        self.window.draw(
+            display
         )
-        display.text(
-            str(self.value),
-            55,
-            40
-        )
-
-    def on_event(self,event):
-        from core.event import BUTTON_B
-        if event.type==BUTTON_B:
-            return "BACK"
