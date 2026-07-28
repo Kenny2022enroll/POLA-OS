@@ -1,7 +1,9 @@
 class App:
-    name = "APP"
-
+    name="APP"
     def open(self):
+        pass
+
+    def close(self):
         pass
 
     def update(self):
@@ -11,7 +13,4 @@ class App:
         pass
 
     def draw(self,display):
-        pass
-
-    def close(self):
         pass

@@ -1,57 +1,33 @@
-from core.event import BUTTON_A
+from core.app import App
+from core.event import (
+    BUTTON_A,
+    BUTTON_DOWN
+)
 
-class Launcher:
+class Launcher(App):
+    name="Launcher"
     def __init__(
         self,
-        display,
-        scheduler,
         manager,
-        events,
-        input
+        navigation
     ):
-        self.display=display
-        self.scheduler=scheduler
         self.manager=manager
-        self.events=events
-        self.input=input
+        self.navigation=navigation
         self.index=0
 
-    def run(self):
-        while True:
-            self.scheduler.wait()
-            self.input.update()
-            self.handle_event()
-            self.display.clear()
-            self.draw()
-            self.display.update()
-
-    def handle_event(self):
-        event=self.events.poll()
-        if event:
-            if event.type==BUTTON_A:
-                self.open_app()
-
-    def open_app(self):
-        apps=self.manager.get_apps()
-        app=apps[self.index]
-        app.open()
-        while True:
-            self.scheduler.wait()
-            self.input.update()
-            event=self.events.poll()
-            if event:
-                if event.type=="button_b":
-                    app.close()
-                    break
-            self.display.clear()
-            app.update()
-            app.draw(
-                self.display
+    def on_event(self,event):
+        if event.type==BUTTON_A:
+            apps=self.manager.get_apps()
+            app=apps[self.index]
+            self.navigation.push(
+                app
             )
-            self.display.update()
 
-    def draw(self):
-        self.display.text(
+    def update(self):
+        pass
+
+    def draw(self,display):
+        display.text(
             "POLA OS",
             25,
             0
@@ -62,7 +38,7 @@ class Launcher:
             text=app.name
             if i==self.index:
                 text=">"+text
-            self.display.text(
+            display.text(
                 text,
                 20,
                 y
