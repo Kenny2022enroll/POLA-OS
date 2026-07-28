@@ -1,30 +1,36 @@
 from core.app import App
 from core.event import (
     BUTTON_A,
-    BUTTON_DOWN
+    UP,
+    DOWN
 )
 
 class Launcher(App):
-    name="Launcher"
+    name = "Launcher"
     def __init__(
         self,
         manager,
         navigation
     ):
-        self.manager=manager
-        self.navigation=navigation
-        self.index=0
+        self.manager = manager
+        self.navigation = navigation
+        self.index = 0
 
     def on_event(self,event):
-        if event.type==BUTTON_A:
-            apps=self.manager.get_apps()
-            app=apps[self.index]
+        apps = self.manager.get_apps()
+        if event.type == DOWN:
+            self.index += 1
+            if self.index >= len(apps):
+                self.index = 0
+        elif event.type == UP:
+            self.index -= 1
+            if self.index < 0:
+                self.index = len(apps)-1
+        elif event.type == BUTTON_A:
+            app = apps[self.index]
             self.navigation.push(
                 app
             )
-
-    def update(self):
-        pass
 
     def draw(self,display):
         display.text(
@@ -35,12 +41,12 @@ class Launcher(App):
         apps=self.manager.get_apps()
         y=20
         for i,app in enumerate(apps):
-            text=app.name
+            name=app.name
             if i==self.index:
-                text=">"+text
+                name="> "+name
             display.text(
-                text,
-                20,
+                name,
+                15,
                 y
             )
             y+=12
