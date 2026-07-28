@@ -4,6 +4,8 @@ class Event:
 
 BUTTON_A = "button_a"
 BUTTON_B = "button_b"
+UP = "up"
+DOWN = "down"
 BUTTON_UP = "button_up"
 BUTTON_DOWN = "button_down"
 BUTTON_LEFT = "button_left"
