@@ -2,7 +2,7 @@ from core.app import App
 from ui.window import Window
 from ui.label import Label
 from ui.theme import Theme
-from core.event import NAV_NEXT, BACK
+from core.event import BACK
 import time
 
 class Timer(App):
@@ -21,7 +21,7 @@ class Timer(App):
         self.window.update()
 
     def on_event(self, event):
-        if event.type == NAV_NEXT:
+        if event.type == BACK:
             return BACK
 
     def draw(self, display):
