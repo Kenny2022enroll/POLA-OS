@@ -1,3 +1,5 @@
+from core.event import NAV_NEXT, BACK
+
 class Kernel:
     def __init__(
         self,
@@ -23,10 +25,8 @@ class Kernel:
             if event:
                 page=self.navigation.current()
                 if page:
-                    result=page.on_event(
-                        event
-                    )
-                    if result=="BACK":
+                    result = page.on_event(event)
+                    if result == BACK:
                         self.navigation.pop()
             page=self.navigation.current()
             if page:

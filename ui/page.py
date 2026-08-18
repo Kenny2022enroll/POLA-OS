@@ -16,7 +16,7 @@ class Page:
         pass
 
     def on_event(self, event):
-        """处理事件，返回 'BACK' 则内核执行出栈。"""
+        """处理语义事件，返回 BACK 则内核执行出栈。"""
         pass
 
     def draw(self, display):
