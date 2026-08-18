@@ -1,15 +1,25 @@
 class Event:
-    def __init__(self, event_type):
+    def __init__(self, event_type, value=None):
         self.type = event_type
+        self.value = value
 
-BUTTON_A = "button_a"
-BUTTON_B = "button_b"
+# Semantic events used by pages instead of hardware button names.
+SELECT = "select"
+NAV_NEXT = "nav_next"
+NAV_PREVIOUS = "nav_previous"
+BACK = "back"
 UP = "up"
 DOWN = "down"
-BUTTON_UP = "button_up"
-BUTTON_DOWN = "button_down"
-BUTTON_LEFT = "button_left"
-BUTTON_RIGHT = "button_right"
+LEFT = "left"
+RIGHT = "right"
+
+# Compatibility aliases for code that still imports the old names.
+BUTTON_A = SELECT
+BUTTON_B = NAV_NEXT
+BUTTON_UP = UP
+BUTTON_DOWN = DOWN
+BUTTON_LEFT = LEFT
+BUTTON_RIGHT = RIGHT
 
 class EventManager:
     def __init__(self):
