@@ -1,6 +1,6 @@
 import time
 from mpython import button_a, button_b
-from core.event import Event, SELECT, BACK, NAV_PREVIOUS
+from core.event import Event, SELECT, NAV_NEXT, NAV_PREVIOUS
 
 # 双击间隔阈值（毫秒），两次 B 键按下间隔小于此值视为双击
 DOUBLE_CLICK_MS = 300
