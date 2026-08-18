@@ -21,8 +21,12 @@ class Launcher(App):
 
     def _rebuild_items(self):
         self.items = []
+        self.window.clear()
+        self.window.add(self.title)
         for app in self.manager.get_apps():
-            self.items.append(Button(app.name, 15, Theme.CONTENT_Y))
+            item = Button(app.name, 15, Theme.CONTENT_Y)
+            self.items.append(item)
+            self.window.add(item)
         self._sync_selection()
 
     def _sync_selection(self):
