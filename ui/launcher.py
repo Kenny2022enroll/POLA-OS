@@ -1,10 +1,9 @@
 from core.app import App
 from ui.theme import Theme
-from core.event import (
-    BUTTON_A,
-    BUTTON_B,
-    UP,
-)
+from core.event import SELECT, NAV_NEXT, NAV_PREVIOUS
+from ui.window import Window
+from ui.label import Label
+from ui.button import Button
 
 class Launcher(App):
     name = "Launcher"
@@ -12,36 +11,45 @@ class Launcher(App):
         self.manager = manager
         self.navigation = navigation
         self.index = 0
+        self.window = Window()
+        self.title = Label("POLA OS", 25, Theme.TITLE_Y)
+        self.window.add(self.title)
+        self.items = []
+
+    def open(self):
+        self._rebuild_items()
+
+    def _rebuild_items(self):
+        self.items = []
+        for app in self.manager.get_apps():
+            self.items.append(Button(app.name, 15, Theme.CONTENT_Y))
+        self._sync_selection()
+
+    def _sync_selection(self):
+        for i, item in enumerate(self.items):
+            item.selected = i == self.index
+            item.y = Theme.CONTENT_Y + i * 12
 
     def on_event(self, event):
         apps = self.manager.get_apps()
+        if not apps:
+            return
 
-        # B 单击 = 下一项（循环）
-        if event.type == BUTTON_B:
-            self.index += 1
-            if self.index >= len(apps):
-                self.index = 0
+        if event.type == NAV_NEXT:
+            self.index = (self.index + 1) % len(apps)
+            self._sync_selection()
+        elif event.type == NAV_PREVIOUS:
+            self.index = (self.index - 1) % len(apps)
+            self._sync_selection()
+        elif event.type == SELECT:
+            self.navigation.push(apps[self.index])
 
-        # B 双击 = 上一项（循环）
-        elif event.type == UP:
-            self.index -= 1
-            if self.index < 0:
-                self.index = len(apps) - 1
-
-        # A = 确认 → 打开选中的应用
-        elif event.type == BUTTON_A:
-            app = apps[self.index]
-            self.navigation.push(app)
+    def update(self):
+        self.window.update()
 
     def draw(self, display):
-        display.text("POLA OS", 25, Theme.TITLE_Y)
-
-        apps = self.manager.get_apps()
-        y = Theme.CONTENT_Y
-
-        for i, app in enumerate(apps):
-            name = app.name
-            if i == self.index:
-                name = "> " + name
-            display.text(name, 15, y)
-            y += 12
+        if not self.items:
+            self.title.draw(display)
+            display.text("No apps", 15, Theme.CONTENT_Y)
+            return
+        self.window.draw(display)
