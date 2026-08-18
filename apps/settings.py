@@ -2,7 +2,7 @@ from core.app import App
 from ui.theme import Theme
 from ui.window import Window
 from ui.label import Label
-from core.event import NAV_NEXT, BACK
+from core.event import BACK
 
 class Settings(App):
     name = "Settings"
@@ -18,5 +18,5 @@ class Settings(App):
         self.window.draw(display)
 
     def on_event(self, event):
-        if event.type == NAV_NEXT:
+        if event.type == BACK:
             return BACK
