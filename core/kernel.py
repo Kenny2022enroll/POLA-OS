@@ -1,4 +1,4 @@
-from core.event import NAV_NEXT, BACK
+from core.event import BACK
 
 class Kernel:
     def __init__(
