@@ -3,88 +3,115 @@ from mpython import touchPad_P, touchPad_Y, touchPad_T, touchPad_H
 from mpython import touchPad_O, touchPad_N
 from core.event import Event, SELECT, BACK, NAV_NEXT, NAV_PREVIOUS
 
-# Hysteresis avoids chatter around the capacitive touch threshold.
-TOUCH_PRESS_THRESHOLD = 180
-TOUCH_RELEASE_THRESHOLD = 240
-CHORD_WINDOW_MS = 150
+TOUCH_PRESS_THRESHOLD = 260
+TOUCH_RELEASE_THRESHOLD = 330
+CHORD_WINDOW_MS = 260
+
+PAD_P = 0
+PAD_Y = 1
+PAD_T = 2
+PAD_H = 3
+PAD_O = 4
+PAD_N = 5
 
 class Input:
-    """Convert touch-pad states into one-shot semantic events."""
+    """Convert touch pads into one-shot semantic events."""
     def __init__(self, event_manager):
         self.events = event_manager
-        self.pad_states = {
-            "p": False, "y": False, "t": False,
-            "h": False, "o": False, "n": False,
-        }
-        self.pad_started = {
-            "p": None, "y": None, "t": None,
-            "h": None, "o": None, "n": None,
-        }
-        self.chords = {
-            "back": {"active": False, "rejected": False},
-            "select": {"active": False, "rejected": False},
-        }
-        self.edge_states = {"previous": False, "next": False}
+        self.pads = (touchPad_P, touchPad_Y, touchPad_T,
+                     touchPad_H, touchPad_O, touchPad_N)
+        self.states = 0
+        self.started = [0, 0, 0, 0, 0, 0]
+        self.back_active = False
+        self.back_rejected = False
+        self.select_active = False
+        self.select_rejected = False
+        self.previous_edge = False
+        self.next_edge = False
+        self.wake_lock = False
 
-    def _read(self, name, pad, now):
-        value = pad.read()
-        was_pressed = self.pad_states[name]
+    def _pressed(self, index, now):
+        mask = 1 << index
+        value = self.pads[index].read()
+        was_pressed = bool(self.states & mask)
         threshold = (TOUCH_RELEASE_THRESHOLD if was_pressed
                      else TOUCH_PRESS_THRESHOLD)
         pressed = value < threshold
-        if pressed and not was_pressed:
-            self.pad_started[name] = now
-        elif not pressed:
-            self.pad_started[name] = None
-        self.pad_states[name] = pressed
+        if pressed:
+            if not was_pressed:
+                self.started[index] = now
+            self.states |= mask
+        else:
+            self.states &= ~mask
+            self.started[index] = 0
         return pressed
 
-    def _chord(self, name, first_name, second_name, event_type, both):
-        state = self.chords[name]
-        first_at = self.pad_started[first_name]
-        second_at = self.pad_started[second_name]
+    def _chord(self, first, second, event_type, now, active, rejected):
+        mask = (1 << first) | (1 << second)
+        both = (self.states & mask) == mask
+        either = bool(self.states & mask)
 
-        if not both:
-            state["active"] = False
-            if not (self.pad_states[first_name] or
-                    self.pad_states[second_name]):
-                state["rejected"] = False
-            return False
+        if not either:
+            return False, False
+        if active or rejected:
+            return active, rejected
 
-        if state["active"] or state["rejected"]:
-            return state["active"]
+        first_at = self.started[first]
+        second_at = self.started[second]
+        if both and first_at is not None and second_at is not None:
+            if abs(time.ticks_diff(first_at, second_at)) <= CHORD_WINDOW_MS:
+                if not self.wake_lock:
+                    self.events.emit(Event(event_type))
+                return True, False
+            return False, True
+        return False, False
 
-        if first_at is None or second_at is None:
-            return False
-        spread = abs(time.ticks_diff(first_at, second_at))
-        if spread > CHORD_WINDOW_MS:
-            # Do not accept a late second contact until the chord is released.
-            state["rejected"] = True
-            return False
+    def reset(self):
+        """Forget held contacts so wake-up cannot replay the old gesture."""
+        self.states = 0
+        self.started[PAD_P] = 0
+        self.started[PAD_Y] = 0
+        self.started[PAD_T] = 0
+        self.started[PAD_H] = 0
+        self.started[PAD_O] = 0
+        self.started[PAD_N] = 0
+        self.back_active = False
+        self.back_rejected = False
+        self.select_active = False
+        self.select_rejected = False
+        self.previous_edge = False
+        self.next_edge = False
+        self.wake_lock = True
 
-        self.events.emit(Event(event_type))
-        state["active"] = True
-        return True
+    def release_wake_lock(self):
+        if self.states == 0:
+            self.wake_lock = False
 
-    def _edge(self, name, pressed, event_type, allowed=True):
-        previous = self.edge_states[name]
-        self.edge_states[name] = pressed
-        if allowed and pressed and not previous:
+    def _edge(self, pressed, previous, event_type, allowed):
+        if allowed and pressed and not previous and not self.wake_lock:
             self.events.emit(Event(event_type))
+        return pressed
 
     def update(self):
         now = time.ticks_ms()
-        p = self._read("p", touchPad_P, now)
-        y = self._read("y", touchPad_Y, now)
-        t = self._read("t", touchPad_T, now)
-        h = self._read("h", touchPad_H, now)
-        o = self._read("o", touchPad_O, now)
-        n = self._read("n", touchPad_N, now)
+        p = self._pressed(PAD_P, now)
+        y = self._pressed(PAD_Y, now)
+        t = self._pressed(PAD_T, now)
+        h = self._pressed(PAD_H, now)
+        o = self._pressed(PAD_O, now)
+        n = self._pressed(PAD_N, now)
 
-        back = self._chord("back", "p", "y", BACK, p and y)
-        select = self._chord("select", "t", "h", SELECT, t and h)
-        chord_active = back or select or (p and y) or (t and h)
+        self.back_active, self.back_rejected = self._chord(
+            PAD_P, PAD_Y, BACK, now, self.back_active, self.back_rejected)
+        self.select_active, self.select_rejected = self._chord(
+            PAD_T, PAD_H, SELECT, now,
+            self.select_active, self.select_rejected)
 
-        # Direction contacts are ignored while a two-pad command is active.
-        self._edge("previous", o, NAV_PREVIOUS, not chord_active)
-        self._edge("next", n, NAV_NEXT, not chord_active)
+        chord_active = self.back_active or self.select_active or (p and y) or (t and h)
+        self.previous_edge = self._edge(
+            o, self.previous_edge, NAV_PREVIOUS, not chord_active)
+        self.next_edge = self._edge(
+            n, self.next_edge, NAV_NEXT, not chord_active)
+        if self.wake_lock and self.states == 0:
+            self.wake_lock = False
+        return self.states != 0
