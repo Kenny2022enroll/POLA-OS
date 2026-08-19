@@ -3,8 +3,4 @@ from apps.settings import Settings
 from apps.stopwatch import Stopwatch
 
 def load_apps():
-    return [
-        Timer(),
-        Stopwatch(),
-        Settings()
-    ]
+    return [Timer, Stopwatch, Settings]
