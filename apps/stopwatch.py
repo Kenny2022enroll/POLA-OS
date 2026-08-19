@@ -17,15 +17,23 @@ class Stopwatch(App):
         self.window.add(self.status)
         self.elapsed = 0
         self.started_at = None
+        self.last_value = "0"
 
     def _elapsed(self):
         if self.started_at is None:
             return self.elapsed
-        return self.elapsed + (time.ticks_ms() - self.started_at) // 1000
+        return self.elapsed + time.ticks_diff(time.ticks_ms(),
+                                              self.started_at) // 1000
 
-    def update(self):
-        self.value_label.text = str(self._elapsed())
-        self.window.update()
+    def update(self, delta_ms=0):
+        value = str(self._elapsed())
+        changed = value != self.last_value
+        self.value_label.text = value
+        self.last_value = value
+        self.window.update(delta_ms)
+        if changed:
+            return (45, Theme.CONTENT_Y, 84, 20)
+        return False
 
     def on_event(self, event):
         if event.type == SELECT:
@@ -36,8 +44,13 @@ class Stopwatch(App):
                 self.elapsed = self._elapsed()
                 self.started_at = None
                 self.status.text = "Paused"
-        elif event.type == BACK:
+            return (40, Theme.CONTENT_Y, 88, 34)
+        if event.type == BACK:
             return BACK
 
     def draw(self, display):
         self.window.draw(display)
+
+    def draw_dirty(self, display, regions):
+        self.value_label.draw(display)
+        self.status.draw(display)
