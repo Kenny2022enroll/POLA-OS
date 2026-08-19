@@ -11,6 +11,7 @@ class Kernel:
         self.context = context
         self.last_page = None
         self.sleep_drawn = False
+        self.wake_armed = False
 
     def _dispatch(self, event):
         if self.context and self.context.power.activity():
@@ -32,7 +33,6 @@ class Kernel:
         if isinstance(result, tuple):
             current.invalidate(result)
         else:
-            # Events can change arbitrary page state, so invalidate by default.
             current.invalidate()
 
     def _draw_full(self, page):
@@ -43,29 +43,36 @@ class Kernel:
         self.display.update()
 
     def _draw_dirty(self, page):
-        full, regions = page.take_dirty()
+        full, rect = page.take_dirty()
         if full or self.last_page is not page:
             self._draw_full(page)
             return
-        if not regions:
+        if rect is None:
             return
         if not self.display.supports_partial:
             self._draw_full(page)
             return
         self.display.begin_frame()
-        for rect in regions:
-            self.display.clear_region(rect)
-        page.draw_dirty(self.display, regions)
+        self.display.clear_region(rect)
+        page.draw_dirty(self.display, rect)
         page.validate()
         self.display.update()
 
+    @staticmethod
+    def _ease(progress):
+        # Progress is fixed-point 0..1024; avoid float work per frame.
+        if progress < 0:
+            progress = 0
+        elif progress > 1024:
+            progress = 1024
+        return (progress * progress * (3072 - 2 * progress)) // 1048576
+
     def _draw_transition(self):
-        transition = self.navigation.transition
-        old_page = transition["old"]
-        new_page = transition["new"]
-        progress = self.navigation.transition_progress()
-        direction = transition["direction"]
-        shift = int(self.display.WIDTH * progress)
+        old_page = self.navigation.transition_old
+        new_page = self.navigation.transition_new
+        progress = self._ease(self.navigation.transition_progress())
+        direction = self.navigation.transition_direction
+        shift = (self.display.WIDTH * progress) // 1024
 
         self.display.begin_frame()
         self.display.clear()
@@ -90,23 +97,27 @@ class Kernel:
     def run(self):
         while True:
             delta_ms = self.scheduler.wait()
-            self.input.update()
+            active = self.input.update()
             event = self.events.poll()
             if self.context:
+                power = self.context.power
                 timeout = self.context.config.get("sleep_timeout", 60)
-                self.context.power.update(delta_ms, timeout)
-            if self.context and self.context.power.is_sleeping():
-                if event:
-                    self.context.power.activity()
-                    self.sleep_drawn = False
-                if not self.sleep_drawn:
-                    self.display.begin_frame()
-                    self.display.clear()
-                    self.display.update()
-                    self.sleep_drawn = True
-                continue
+                power.update(delta_ms, timeout)
+                if power.is_sleeping():
+                    if power.observe_wake(active, delta_ms):
+                        power.wake()
+                        self.input.reset()
+                        self.events.clear()
+                        event = None
+                        self.sleep_drawn = False
+                    else:
+                        if not self.sleep_drawn:
+                            self.display.begin_frame()
+                            self.display.clear()
+                            self.display.update()
+                            self.sleep_drawn = True
+                        continue
 
-            self.sleep_drawn = False
             while event:
                 self._dispatch(event)
                 event = self.events.poll()
