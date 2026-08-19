@@ -2,18 +2,20 @@ class Navigation:
     def __init__(self, transition_ms=120):
         self.stack = []
         self.transition_ms = transition_ms
-        self.transition = None
+        self.transition_old = None
+        self.transition_new = None
+        self.transition_elapsed = 0
+        self.transition_direction = 0
 
     def _start_transition(self, old_page, new_page, direction):
         if not old_page or not new_page or self.transition_ms <= 0:
-            self.transition = None
+            self.transition_old = None
+            self.transition_new = None
             return
-        self.transition = {
-            "old": old_page,
-            "new": new_page,
-            "elapsed": 0,
-            "direction": direction,
-        }
+        self.transition_old = old_page
+        self.transition_new = new_page
+        self.transition_elapsed = 0
+        self.transition_direction = direction
 
     def push(self, page):
         current = self.current()
@@ -44,19 +46,20 @@ class Navigation:
         self._start_transition(old, page, 1)
 
     def update(self, delta_ms):
-        if not self.transition:
+        if self.transition_old is None:
             return False
-        self.transition["elapsed"] += delta_ms
-        if self.transition["elapsed"] >= self.transition_ms:
-            self.transition = None
+        self.transition_elapsed += delta_ms
+        if self.transition_elapsed >= self.transition_ms:
+            self.transition_old = None
+            self.transition_new = None
             return False
         return True
 
     def transition_progress(self):
-        if not self.transition:
-            return 1.0
-        return min(1.0, self.transition["elapsed"] /
-                   float(self.transition_ms))
+        if self.transition_old is None:
+            return 1024
+        progress = (self.transition_elapsed * 1024) // self.transition_ms
+        return min(1024, progress)
 
     def current(self):
         if self.stack:
