@@ -1,22 +1,20 @@
 from mpython import oled
 
 class Display:
-    """OLED adapter with dirty-frame and dirty-region tracking."""
+    """OLED adapter with dirty-frame and optional dirty-region tracking."""
     WIDTH = 128
     HEIGHT = 64
     def __init__(self):
         self.dirty = True
-        self.dirty_regions = []
         self.offset_x = 0
         self.offset_y = 0
         self.supports_partial = hasattr(oled, "fill_rect")
 
     def begin_frame(self):
         self.dirty = False
-        self.dirty_regions = []
 
     def clear(self, rect=None):
-        if rect and hasattr(oled, "fill_rect"):
+        if rect and self.supports_partial:
             x, y, width, height = rect
             oled.fill_rect(x, y, width, height, 0)
         else:
@@ -24,20 +22,15 @@ class Display:
         self.dirty = True
 
     def clear_region(self, rect):
-        if self.supports_partial:
-            self.clear(rect)
-        else:
-            # A framebuffer-only driver cannot clear one region safely.
-            # The kernel will still skip unchanged frames, but redraws here
-            # use a full clear to avoid stale glyphs.
-            self.clear()
+        self.clear(rect)
 
     def set_offset(self, x=0, y=0):
         self.offset_x = x
         self.offset_y = y
 
     def reset_offset(self):
-        self.set_offset(0, 0)
+        self.offset_x = 0
+        self.offset_y = 0
 
     def text(self, text, x, y):
         oled.DispChar(text, x + self.offset_x, y + self.offset_y)
