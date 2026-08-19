@@ -1,22 +1,79 @@
 from core.app import App
+from core.event import SELECT, BACK, NAV_NEXT, NAV_PREVIOUS
 from ui.theme import Theme
 from ui.window import Window
 from ui.label import Label
-from core.event import NAV_NEXT, BACK
+from ui.selector import Selector
 
 class Settings(App):
     name = "Settings"
+    def __init__(self):
+        super().__init__()
+        self.index = 0
+        self.selectors = []
+
     def open(self):
+        config = self.context.config if self.context else None
+        home_style = config.get("home_style", "default") if config else "default"
+        sound = config.get("sound_enabled", True) if config else True
+        timeout = config.get("sleep_timeout", 60) if config else 60
+        self.selectors = [
+            Selector("Home", ["default", "minimal"],
+                     0 if home_style == "default" else 1, 5, 22),
+            Selector("Sleep", ["off", "30s", "60s"],
+                     {0: 0, 30: 1, 60: 2}.get(timeout, 2), 5, 34),
+            Selector("Sound", ["on", "off"], 0 if sound else 1, 5, 46),
+        ]
         self.window = Window()
         self.window.add(Label("Settings", 30, Theme.TITLE_Y))
-        self.window.add(Label("v0.1 (Takla)", 30, Theme.CONTENT_Y))
+        for selector in self.selectors:
+            self.window.add(selector)
+        self._sync_selection()
 
-    def update(self):
-        self.window.update()
+    def _sync_selection(self):
+        for i, selector in enumerate(self.selectors):
+            selector.selected = i == self.index
 
-    def draw(self, display):
-        self.window.draw(display)
+    def _change_value(self, direction):
+        if not self.selectors:
+            return
+        selector = self.selectors[self.index]
+        if direction > 0:
+            selector.next()
+        else:
+            selector.previous()
+
+    def _save(self):
+        if not self.context or not self.selectors:
+            return
+        home, sleep, sound = [item.value for item in self.selectors]
+        timeout = {"off": 0, "30s": 30, "60s": 60}[sleep]
+        self.context.config.update({
+            "home_style": home,
+            "sleep_timeout": timeout,
+            "sound_enabled": sound == "on",
+        })
 
     def on_event(self, event):
-        if event.type == NAV_NEXT:
+        if event.type == BACK:
             return BACK
+        if not self.selectors:
+            return
+        if event.type == NAV_NEXT:
+            self.index = (self.index + 1) % len(self.selectors)
+            self._sync_selection()
+        elif event.type == NAV_PREVIOUS:
+            self.index = (self.index - 1) % len(self.selectors)
+            self._sync_selection()
+        elif event.type == SELECT:
+            self._change_value(1)
+            self._save()
+        return (0, Theme.CONTENT_Y, 128,
+                Theme.FOOTER_Y - Theme.CONTENT_Y + 8)
+
+    def update(self, delta_ms=0):
+        return self.window.update(delta_ms)
+
+    def draw(self, display):
+        display.text("*", 0, self.selectors[self.index].y)
+        self.window.draw(display)

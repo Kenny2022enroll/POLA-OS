@@ -7,12 +7,10 @@ class Scheduler:
 
     def wait(self):
         now = time.ticks_ms()
-        delta = time.ticks_diff(
-            now,
-            self.last
-        )
+        delta = time.ticks_diff(now, self.last)
         if delta < self.interval:
-            time.sleep_ms(
-                self.interval-delta
-            )
-        self.last = time.ticks_ms()
+            time.sleep_ms(self.interval - delta)
+        now = time.ticks_ms()
+        elapsed = time.ticks_diff(now, self.last)
+        self.last = now
+        return elapsed

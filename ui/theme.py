@@ -1,4 +1,8 @@
 class Theme:
-    TITLE_Y=0
-    CONTENT_Y=20
-    FOOTER_Y=55
+    SCREEN_WIDTH = 128
+    SCREEN_HEIGHT = 64
+    STATUS_Y = 0
+    TITLE_Y = 10
+    CONTENT_Y = 22
+    FOOTER_Y = 55
+    ROW_HEIGHT = 12
