@@ -1,28 +1,34 @@
 from ui.widget import Widget
 
 class ListView(Widget):
-    """Vertical selectable list for the 128x64 display."""
+    """Selectable vertical list with a bounded visible window."""
     def __init__(self, x=0, y=0, row_height=12, visible_rows=3):
         super().__init__(x, y)
         self.row_height = row_height
         self.visible_rows = visible_rows
         self.items = []
         self.index = 0
+        self.offset = 0
 
     def set_items(self, items):
         self.items = items
-        if self.items:
-            self.index %= len(self.items)
-        else:
-            self.index = 0
+        self.index = min(self.index, max(0, len(items) - 1))
         self._sync_selection()
 
     def _sync_selection(self):
-        first = max(0, self.index - self.visible_rows + 1)
-        for offset, item in enumerate(self.items[first:first + self.visible_rows]):
-            item.selected = first + offset == self.index
+        if not self.items:
+            self.index = 0
+            self.offset = 0
+            return
+        if self.index < self.offset:
+            self.offset = self.index
+        if self.index >= self.offset + self.visible_rows:
+            self.offset = self.index - self.visible_rows + 1
+        for i, item in enumerate(self.items):
+            item.selected = i == self.index
+            item.visible = self.offset <= i < self.offset + self.visible_rows
             item.x = self.x
-            item.y = self.y + offset * self.row_height
+            item.y = self.y + (i - self.offset) * self.row_height
 
     def next(self):
         if self.items:
@@ -35,11 +41,9 @@ class ListView(Widget):
             self._sync_selection()
 
     def selected(self):
-        if not self.items:
-            return None
-        return self.items[self.index]
+        return self.items[self.index] if self.items else None
 
     def draw(self, display):
-        first = max(0, self.index - self.visible_rows + 1)
-        for item in self.items[first:first + self.visible_rows]:
-            item.draw(display)
+        for item in self.items:
+            if item.visible:
+                item.draw(display)
