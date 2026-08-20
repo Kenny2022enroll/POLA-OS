@@ -1,30 +1,27 @@
 class Page:
     """Base page with lifecycle, invalidation and transition hooks."""
-
     def __init__(self):
         self.running = True
         self.context = None
         self.dirty = True
         self.full_redraw = True
-        self.dirty_regions = []
+        self.dirty_rect = None
 
     def invalidate(self, rect=None):
         self.dirty = True
         if rect is None:
             self.full_redraw = True
-            self.dirty_regions = []
+            self.dirty_rect = None
         elif not self.full_redraw:
-            self.dirty_regions.append(rect)
+            self.dirty_rect = rect
 
     def validate(self):
         self.dirty = False
         self.full_redraw = False
-        self.dirty_regions = []
+        self.dirty_rect = None
 
     def take_dirty(self):
-        full = self.full_redraw
-        regions = self.dirty_regions[:]
-        return full, regions
+        return self.full_redraw, self.dirty_rect
 
     def on_enter(self):
         self.open()
@@ -54,7 +51,7 @@ class Page:
     def draw(self, display):
         pass
 
-    def draw_dirty(self, display, regions):
+    def draw_dirty(self, display, rect):
         self.draw(display)
 
     def transition_in(self, progress):

@@ -5,6 +5,8 @@ from ui.window import Window
 from ui.label import Label
 from ui.selector import Selector
 
+BRIGHTNESS_OPTIONS = ["25", "50", "80", "100"]
+
 class Settings(App):
     name = "Settings"
     def __init__(self):
@@ -17,18 +19,32 @@ class Settings(App):
         home_style = config.get("home_style", "default") if config else "default"
         sound = config.get("sound_enabled", True) if config else True
         timeout = config.get("sleep_timeout", 60) if config else 60
+        brightness = config.get("brightness", 80) if config else 80
         self.selectors = [
             Selector("Home", ["default", "minimal"],
                      0 if home_style == "default" else 1, 5, 22),
+            Selector("Bright", BRIGHTNESS_OPTIONS,
+                     self._brightness_index(brightness), 5, 32),
             Selector("Sleep", ["off", "30s", "60s"],
-                     {0: 0, 30: 1, 60: 2}.get(timeout, 2), 5, 34),
-            Selector("Sound", ["on", "off"], 0 if sound else 1, 5, 46),
+                     {0: 0, 30: 1, 60: 2}.get(timeout, 2), 5, 42),
+            Selector("Sound", ["on", "off"], 0 if sound else 1, 5, 52),
         ]
         self.window = Window()
         self.window.add(Label("Settings", 30, Theme.TITLE_Y))
         for selector in self.selectors:
             self.window.add(selector)
         self._sync_selection()
+
+    @staticmethod
+    def _brightness_index(value):
+        best = 0
+        best_gap = None
+        for i, option in enumerate(BRIGHTNESS_OPTIONS):
+            gap = abs(int(option) - value)
+            if best_gap is None or gap < best_gap:
+                best_gap = gap
+                best = i
+        return best
 
     def _sync_selection(self):
         for i, selector in enumerate(self.selectors):
@@ -46,13 +62,19 @@ class Settings(App):
     def _save(self):
         if not self.context or not self.selectors:
             return
-        home, sleep, sound = [item.value for item in self.selectors]
+        home, bright, sleep, sound = [item.value for item in self.selectors]
         timeout = {"off": 0, "30s": 30, "60s": 60}[sleep]
+        brightness = int(bright)
         self.context.config.update({
             "home_style": home,
+            "brightness": brightness,
             "sleep_timeout": timeout,
             "sound_enabled": sound == "on",
         })
+        # Apply brightness live so the change is visible immediately.
+        self.context.power.set_brightness(brightness)
+        if self.context.display:
+            self.context.display.set_brightness(brightness)
 
     def on_event(self, event):
         if event.type == BACK:
