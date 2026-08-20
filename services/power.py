@@ -4,11 +4,22 @@ class PowerService:
     SLEEP = "sleep"
     # About two 20 FPS samples: responsive but resistant to noise.
     WAKE_CONFIRM_MS = 60
-
     def __init__(self):
         self.state = self.ACTIVE
         self.idle_ms = 0
         self.wake_ms = 0
+        # Current brightness level in percent. Applied to the hardware by
+        # Display.set_brightness(); kept here so power transitions (wake,
+        # dim) can restore it.
+        self.brightness = 80
+
+    def set_brightness(self, percent):
+        if percent < 0:
+            percent = 0
+        elif percent > 100:
+            percent = 100
+        self.brightness = percent
+        return percent
 
     def activity(self):
         self.idle_ms = 0
