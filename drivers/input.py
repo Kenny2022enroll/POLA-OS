@@ -1,6 +1,6 @@
 import time
-from mpython import touchPad_P, touchPad_Y, touchPad_T, touchPad_H
-from mpython import touchPad_O, touchPad_N
+from devlib import touchPad_P, touchPad_Y, touchPad_T, touchPad_H
+from devlib import touchPad_O, touchPad_N
 from core.event import Event, SELECT, BACK, NAV_NEXT, NAV_PREVIOUS
 
 TOUCH_PRESS_THRESHOLD = 260
