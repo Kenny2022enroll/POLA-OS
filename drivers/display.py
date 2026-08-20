@@ -1,4 +1,10 @@
-from mpython import oled
+import devlib
+
+try:
+    oled = devlib.oled
+except AttributeError:
+    # devlib only creates `oled` when it finds the display on the I2C bus.
+    raise RuntimeError("OLED not found on I2C bus (devlib)")
 
 class Display:
     """OLED adapter with dirty-frame, dirty-region and brightness support."""
