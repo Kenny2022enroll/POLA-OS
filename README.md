@@ -2,6 +2,15 @@
 
 POLA-OS 是运行在 mPython 掌控板上的轻量级嵌入式桌面系统原型。
 
+## 依赖库：devlib（替代官方 mpython.py）
+
+本系统**不使用**官方固件的 `mpython.py`，而是使用第三方优化库 [devlib](https://github.com/emofalling/devlib)（作者 emofalling，MIT 协议）。devlib 大幅提升了 OLED 刷新与图像处理性能，并为 `oled` 提供原生 `contrast()` 亮度接口。
+
+- **安装**：把 `third_party/devlib/devlib.mpy`（盛思掌控板用 `xtensawin` 发行版）上传到掌控板文件系统根目录，使 `import devlib` 可用。
+- **互斥**：`devlib` 与 `mpython` **不能同时导入**（两者都会初始化 I2C 与引脚，会相互冲突）。本项目代码只导入 `devlib`，请勿再引入 `mpython`。
+- **许可证**：devlib 为 MIT 协议，其版权声明见 [`third_party/devlib/LICENSE`](third_party/devlib/LICENSE)。分发本项目时须一并保留该声明。
+- **注意**：devlib 的 `oled.DispChar` 默认使用 16px 高字体，且 OLED 驱动为 SSD1106。若在实机上发现行距重叠或显示偏移，请调整 `ui/theme.py` 中的 `TITLE_Y`/`CONTENT_Y`/`ROW_HEIGHT` 等常量。devlib 默认开启 I2C 超频（1250KHz），若外接设备不稳可在 devlib 源码中将 `overclock` 改为 `False`。
+
 ## 当前能力
 
 - Home 桌面与 Applications 应用菜单
@@ -11,10 +20,13 @@ POLA-OS 是运行在 mPython 掌控板上的轻量级嵌入式桌面系统原型
 - N：下一个项目 `NAV_NEXT`
 - 页面生命周期：进入、暂停、恢复、离开
 - UI 组件：`Window`、`Label`、`Button`、`ListView`、`Menu`、`Selector`、`Dialog`、`StatusBar`
-- 系统服务：时钟、配置、电源状态
-- JSON 配置持久化：主页样式、睡眠时间、声音开关
+- 系统服务：时钟、配置、电源状态、内存看门狗
+- JSON 配置持久化：主页样式、亮度、睡眠时间、声音开关
 - 内置 `Timer`、`Stopwatch`、`Settings`
 - 可选插件目录与示例插件
+- 页面栈深度限制（默认 8 层）与低水位大对象回收（`gc.collect()`）
+- 应用崩溃捕获：异常时弹出错误对话框，`P+Y`/`T+H` 关闭并返回上一级
+- 屏幕亮度调节（通过 devlib 的 `oled.contrast()` 原生支持，`Settings` 中可调）
 
 ## 输入约定
 
@@ -70,11 +82,12 @@ POLA-OS/
 │   ├── settings.py        配置选择页
 │   ├── stopwatch.py       秒表
 │   └── timer.py           计时器
-├── core/                  内核、事件、导航和应用管理
+├── core/                  内核、事件、导航、应用管理和错误对话框
 ├── drivers/               OLED 和触摸驱动
-├── services/              时钟、配置、电源和系统上下文
+├── services/              时钟、配置、电源、内存和系统上下文
 ├── ui/                    可复用 UI 组件
 ├── plugins/               可选插件及示例
+├── tests/                 宿主机回归测试（mock 硬件模块）
 ├── data/config.json       默认配置文件
 └── assets/                宣传图等资源
 ```
@@ -90,10 +103,17 @@ POLA-OS/
 当前设置项：
 
 - Home：`default` / `minimal`
+- Bright：`25` / `50` / `80` / `100`（亮度百分比，devlib 提供原生 `oled.contrast()`，修改即时生效）
 - Sleep：`off` / `30s` / `60s`
 - Sound：`on` / `off`
 
 配置存储在 `data/config.json`。设备重启后会自动读取。
+
+## 稳定性
+
+- **页面栈深度限制**：`Navigation(max_depth=8)`。超过上限时淘汰根页面之上最旧的页面，防止深层导航耗尽内存。
+- **大对象回收**：`services/memory.py` 的 `MemoryService` 通过 `gc.threshold()` 提前触发运行时 GC，并在空闲内存低于低水位（默认 4 KB）或应用崩溃后执行 `gc.collect()` 全量回收。
+- **崩溃捕获**：内核包裹页面的事件、更新与绘制调用。应用抛出异常时，内核会移除出错页面、清空积压输入，并压入错误对话框页（显示应用名、异常类型与信息摘要）；按 `P+Y` 或 `T+H` 关闭对话框并回到出错页面之下的一级页面。
 
 ## 新增应用
 
@@ -130,4 +150,8 @@ plugins/HelloWorld/
 
 ## 许可证
 
-本项目遵循仓库中的 [LICENSE](LICENSE) 文件。
+本项目代码遵循仓库中的 [LICENSE](LICENSE) 文件（MIT，Copyright (c) 2025 Kenny）。
+
+第三方依赖：
+
+- [devlib](https://github.com/emofalling/devlib) — MIT，Copyright (c) 2025 emofalling。声明见 [`third_party/devlib/LICENSE`](third_party/devlib/LICENSE)，随本项目分发时须保留。
