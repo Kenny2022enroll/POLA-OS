@@ -1,7 +1,7 @@
 # POLA-OS
 
 POLA-OS 是运行在 mPython 掌控板上的轻量级嵌入式桌面系统原型。
-[`了解如何参与POLA OS应用/插件开发`](third_party/devlib/POLA-OS应用开发手册.md)
+[`了解如何参与POLA OS应用/插件开发`](third_party/POLA-OS应用开发手册.md)
 
 ## 依赖库：devlib（替代官方 mpython.py）
 
