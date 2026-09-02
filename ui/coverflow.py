@@ -43,6 +43,9 @@ class CoverFlow:
         self.items = list(names)
         self.target = 0
         self.pos = 0
+        # Pre-allocated buffers to avoid per-frame heap allocation
+        self._sort_buf = [[0, 0, 0] for _ in range(8)]
+        self._union_cols = [0] * ICON_SIZE
 
     def count(self):
         return len(self.items)
@@ -95,13 +98,26 @@ class CoverFlow:
     def draw(self, display):
         if not self.items:
             return
-        entries = []
+        # Pre-allocated buffer: max 5 visible icons (center + 2 each side)
+        # Each entry: [abs_d, index, signed_d]
+        count = 0
         for i in range(len(self.items)):
             d = self.pos - i * STEP
             if -CULL_D < d < CULL_D:
-                entries.append((abs(d), i, d))
-        entries.sort(reverse=True)
-        for _, i, d in entries:
+                if count < len(self._sort_buf):
+                    self._sort_buf[count][0] = abs(d)
+                    self._sort_buf[count][1] = i
+                    self._sort_buf[count][2] = d
+                else:
+                    self._sort_buf.append([abs(d), i, d])
+                count += 1
+        # Sort only the active slice (in-place, no allocation)
+        for i in range(count - 1):
+            for j in range(i + 1, count):
+                if self._sort_buf[i][0] < self._sort_buf[j][0]:
+                    self._sort_buf[i], self._sort_buf[j] = self._sort_buf[j], self._sort_buf[i]
+        for k in range(count):
+            _, i, d = self._sort_buf[k]
             if d == 0:
                 self._draw_center(display, i)
             else:
@@ -137,9 +153,13 @@ class CoverFlow:
         far_h = ICON_SIZE - (((ICON_SIZE - SIDE_FAR_H) * s) >> 10)
         if width <= 0 or near_h <= 0 or far_h <= 0:
             return
-        union_cols = [0] * width
+        # Reuse pre-allocated _union_cols array (size = ICON_SIZE)
+        uc = self._union_cols
         for c in range(ICON_SIZE):
-            union_cols[(c * width) // ICON_SIZE] |= cols[c]
+            uc[c] = 0
+        for c in range(ICON_SIZE):
+            uc[(c * width) // ICON_SIZE] |= cols[c]
+        union_cols = uc  # local alias for readability below
         x_left = CENTER_X + sigma * x_off - width // 2
         if x_left >= Theme.SCREEN_WIDTH or x_left + width <= 0:
             return
