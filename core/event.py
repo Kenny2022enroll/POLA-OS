@@ -50,7 +50,9 @@ class EventManager:
         return event
 
     def clear(self):
-        self.buffer = [None] * self.max_size
+        buf = self.buffer
+        for i in range(self.max_size):
+            buf[i] = None
         self.head = 0
         self.tail = 0
         self.size = 0
