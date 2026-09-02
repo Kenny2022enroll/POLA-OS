@@ -73,7 +73,11 @@ class Home(App):
                 self.app_manager.create(flow.selected(), self.context))
 
     def on_resume(self):
-        self.open()
+        style = self.context.config.get("home_style", "default")
+        style = style if style in HOME_STYLES else "default"
+        if style != self.style or (style == "icon" and self.coverflow is None):
+            self._last_index = self.coverflow.selected() if self.coverflow else self._last_index
+            self.open()
         self.invalidate()
 
     def update(self, delta_ms=0):
