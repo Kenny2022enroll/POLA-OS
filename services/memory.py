@@ -10,9 +10,8 @@ class MemoryService:
     memory falls below a low-water mark.
     """
     # Collect when free heap drops below this many bytes.
-    LOW_WATER = 4096
-    # Avoid manual collecting more often than this unless forced.
-    MIN_INTERVAL_MS = 2000
+    LOW_WATER = 6144
+    MIN_INTERVAL_MS = 1000
     def __init__(self, low_water=None):
         if low_water is not None:
             self.LOW_WATER = low_water
