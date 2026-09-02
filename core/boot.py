@@ -8,23 +8,25 @@ from core.kernel import Kernel
 from apps.registry import load_apps
 from apps.home import Home
 from services.context import SystemContext
+from ui.status_bar import StatusBar
 
 class Boot:
     def __init__(self):
         self.context = SystemContext()
         self.display = Display()
-        # Let services and apps reach the display (e.g. brightness control).
         self.context.display = self.display
-        self.scheduler = Scheduler(fps=20)
+        # 25 FPS keeps animations smooth while the dirty-region renderer
+        # keeps idle frames nearly free.
+        self.scheduler = Scheduler(fps=25)
         self.events = EventManager()
         self.input = Input(self.events)
+        # Kernel-owned chrome: time, touch highlight and battery gauge.
+        self.status_bar = StatusBar(self.context.clock,
+                                    self.context.battery, self.input)
         self.app_manager = AppManager()
         self.app_manager.load(load_apps())
-        # Keep startup deterministic and small; optional plugins are not
-        # imported or scanned on the hot boot path.
-        self.navigation = Navigation(transition_ms=90)
-        self.navigation.push(Home(self.app_manager, self.navigation,
-                                  self.context))
+        self.navigation = Navigation(transition_ms=120)
+        self.navigation.push(Home(self.app_manager, self.navigation, self.context))
         self.kernel = Kernel(
             self.display,
             self.scheduler,
@@ -32,8 +34,10 @@ class Boot:
             self.events,
             self.navigation,
             self.context,
+            self.status_bar,
         )
         self._apply_boot_brightness()
+
     def _apply_boot_brightness(self):
         level = self.context.config.get("brightness", 80)
         self.context.power.set_brightness(level)
