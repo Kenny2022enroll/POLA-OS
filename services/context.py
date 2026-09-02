@@ -2,6 +2,7 @@ from services.clock import ClockService
 from services.config import ConfigService
 from services.power import PowerService
 from services.memory import MemoryService
+from services.battery import BatteryService
 
 class SystemContext:
     def __init__(self):
@@ -9,6 +10,5 @@ class SystemContext:
         self.config = ConfigService()
         self.power = PowerService()
         self.memory = MemoryService()
-        # Filled in by Boot once the display driver exists, so services and
-        # apps can reach it (e.g. for brightness control).
+        self.battery = BatteryService()
         self.display = None
