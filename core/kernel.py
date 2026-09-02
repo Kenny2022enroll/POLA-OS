@@ -1,32 +1,40 @@
+import time
 from core.event import BACK
+from ui.theme import Theme
 
 class Kernel:
+    RECLAIM_INTERVAL_MS = 500
+
     def __init__(self, display, scheduler, input, events, navigation,
-                 context=None):
+                 context=None, status_bar=None):
         self.display = display
         self.scheduler = scheduler
         self.input = input
         self.events = events
         self.navigation = navigation
         self.context = context
+        self.status_bar = status_bar
         self.last_page = None
         self.sleep_drawn = False
         self.wake_armed = False
+        self.last_reclaim = time.ticks_ms()
 
     def _reclaim(self, force=False):
-        """Reclaim large objects when the heap watchdog says so."""
         if self.context and hasattr(self.context, "memory"):
             self.context.memory.collect_if_needed(force=force)
 
+    def _reclaim_tick(self):
+        now = time.ticks_ms()
+        if time.ticks_diff(now, self.last_reclaim) >= self.RECLAIM_INTERVAL_MS:
+            self.last_reclaim = now
+            self._reclaim()
+
     def _apply_brightness(self):
         if self.context and self.context.display:
-            self.context.display.set_brightness(
-                self.context.power.brightness)
+            self.context.display.set_brightness(self.context.power.brightness)
 
     def _handle_crash(self, page, exc):
-        """Replace a faulting app with an error dialog instead of halting."""
         from core.error_page import ErrorPage
-        # If the error viewer itself faults, just drop it to avoid a loop.
         if isinstance(page, ErrorPage):
             self.navigation.remove(page)
             current = self.navigation.current()
@@ -37,7 +45,6 @@ class Kernel:
             name = getattr(page, "name", None) or page.__class__.__name__
         except Exception:
             name = "App"
-        # Drop stale input and the faulting page, then surface the dialog.
         self.events.clear()
         try:
             self.input.reset()
@@ -47,7 +54,6 @@ class Kernel:
         self.navigation.push(ErrorPage(name, exc))
         self.last_page = None
         self.sleep_drawn = False
-        # Reclaim whatever the crashed app left behind.
         self._reclaim(force=True)
 
     def _dispatch(self, event):
@@ -68,7 +74,6 @@ class Kernel:
                 current.invalidate()
             self._reclaim()
             return False
-
         current = self.navigation.current()
         if not current:
             return False
@@ -82,28 +87,43 @@ class Kernel:
         self.display.begin_frame()
         self.display.clear()
         page.draw(self.display)
+        if self.status_bar is not None:
+            self.status_bar.draw(self.display)
         page.validate()
         self.display.update()
 
-    def _draw_dirty(self, page):
+    def _draw_dirty(self, page, status_changed):
+        strip_h = Theme.STRIP_HEIGHT
         full, rect = page.take_dirty()
         if full or self.last_page is not page:
             self._draw_full(page)
             return
-        if rect is None:
+        if rect is None and not status_changed:
             return
         if not self.display.supports_partial:
             self._draw_full(page)
             return
+        if rect is None:
+            # Chrome-only update: repaint just the reserved strip.
+            self.display.begin_frame()
+            self.display.clear_region((0, 0, self.display.WIDTH, strip_h))
+            self.status_bar.draw(self.display)
+            self.display.update()
+            return
+        if status_changed:
+            x, y, w, h = rect
+            bottom = y + h
+            rect = (0, 0, self.display.WIDTH, bottom if bottom > strip_h else strip_h)
         self.display.begin_frame()
         self.display.clear_region(rect)
         page.draw_dirty(self.display, rect)
+        if self.status_bar is not None and rect[1] < strip_h:
+            self.status_bar.draw(self.display)
         page.validate()
         self.display.update()
 
     @staticmethod
     def _ease(progress):
-        # Progress is fixed-point 0..1024; avoid float work per frame.
         if progress < 0:
             progress = 0
         elif progress > 1024:
@@ -116,72 +136,79 @@ class Kernel:
         progress = self._ease(self.navigation.transition_progress())
         direction = self.navigation.transition_direction
         shift = (self.display.WIDTH * progress) // 1024
-
         self.display.begin_frame()
         self.display.clear()
         self.display.set_offset(-shift if direction > 0 else shift, 0)
         old_page.draw(self.display)
         self.display.set_offset(
-            self.display.WIDTH - shift if direction > 0 else
-            shift - self.display.WIDTH,
-            0,
-        )
+            self.display.WIDTH - shift if direction > 0 else shift - self.display.WIDTH, 0)
         new_page.draw(self.display)
         self.display.reset_offset()
+        if self.status_bar is not None:
+            self.status_bar.draw(self.display)
         self.display.update()
 
-    def _render(self, page, transition_active):
+    def _render(self, page, transition_active, status_changed=False):
         if transition_active:
             self._draw_transition()
             return
-        self._draw_dirty(page)
+        self._draw_dirty(page, status_changed)
         self.last_page = page
 
     def run(self):
         while True:
-            delta_ms = self.scheduler.wait()
-            active = self.input.update()
+            self.step()
+
+    def step(self):
+        delta_ms = self.scheduler.wait()
+        active = self.input.update()
+        event = self.events.poll()
+        if self.context:
+            power = self.context.power
+            timeout = self.context.config.get("sleep_timeout", 60)
+            power.update(delta_ms, timeout)
+            self.context.battery.update(delta_ms, power.is_sleeping())
+            if power.is_sleeping():
+                if power.observe_wake(active, delta_ms):
+                    power.wake()
+                    self.input.reset()
+                    self.events.clear()
+                    event = None
+                    self.sleep_drawn = False
+                    self._apply_brightness()
+                    page = self.navigation.current()
+                    if page:
+                        page.invalidate()
+                else:
+                    if not self.sleep_drawn:
+                        self.display.begin_frame()
+                        self.display.clear()
+                        self.display.update()
+                        self.sleep_drawn = True
+                    return
+            self._reclaim_tick()
+
+        status_changed = (self.status_bar.update(delta_ms)
+                          if self.status_bar is not None else False)
+
+        while event:
+            if self._dispatch(event):
+                break
             event = self.events.poll()
-            if self.context:
-                power = self.context.power
-                timeout = self.context.config.get("sleep_timeout", 60)
-                power.update(delta_ms, timeout)
-                if power.is_sleeping():
-                    if power.observe_wake(active, delta_ms):
-                        power.wake()
-                        self.input.reset()
-                        self.events.clear()
-                        event = None
-                        self.sleep_drawn = False
-                        self._apply_brightness()
-                    else:
-                        if not self.sleep_drawn:
-                            self.display.begin_frame()
-                            self.display.clear()
-                            self.display.update()
-                            self.sleep_drawn = True
-                        continue
-                self._reclaim()
 
-            while event:
-                if self._dispatch(event):
-                    # A crash swapped the page; stop draining stale input.
-                    break
-                event = self.events.poll()
-
-            page = self.navigation.current()
-            if not page:
-                continue
-            try:
-                changed = page.update(delta_ms)
-            except Exception as exc:
-                self._handle_crash(page, exc)
-                continue
-            if changed:
-                page.invalidate(changed if isinstance(changed, tuple) else None)
-            transition_active = self.navigation.update(delta_ms)
-            try:
-                self._render(page, transition_active)
-            except Exception as exc:
-                self._handle_crash(page, exc)
-                continue
+        page = self.navigation.current()
+        if not page:
+            return
+        try:
+            changed = page.update(delta_ms)
+        except Exception as exc:
+            self._handle_crash(page, exc)
+            return
+        if changed:
+            page.invalidate(changed if isinstance(changed, tuple) else None)
+        transition_active = self.navigation.update(delta_ms)
+        try:
+            self._render(page, transition_active, status_changed)
+        except Exception as exc:
+            self._handle_crash(page, exc)
+            return
