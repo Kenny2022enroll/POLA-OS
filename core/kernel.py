@@ -151,7 +151,12 @@ class Kernel:
     def _render(self, page, transition_active, status_changed=False):
         if transition_active:
             self._draw_transition()
+            self._transition_was_active = True
             return
+        # First frame after transition ends: reclaim temp objects
+        if getattr(self, '_transition_was_active', False):
+            self._transition_was_active = False
+            self._reclaim(force=True)
         self._draw_dirty(page, status_changed)
         self.last_page = page
 
