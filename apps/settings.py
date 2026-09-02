@@ -6,6 +6,8 @@ from ui.label import Label
 from ui.selector import Selector
 
 BRIGHTNESS_OPTIONS = ["25", "50", "80", "100"]
+# "icon" selects the iPod Cover Flow desktop.
+HOME_OPTIONS = ["default", "minimal", "icon"]
 
 class Settings(App):
     name = "Settings"
@@ -20,9 +22,11 @@ class Settings(App):
         sound = config.get("sound_enabled", True) if config else True
         timeout = config.get("sleep_timeout", 60) if config else 60
         brightness = config.get("brightness", 80) if config else 80
+        if home_style not in HOME_OPTIONS:
+            home_style = "default"
         self.selectors = [
-            Selector("Home", ["default", "minimal"],
-                     0 if home_style == "default" else 1, 5, 22),
+            Selector("Home", HOME_OPTIONS,
+                     HOME_OPTIONS.index(home_style), 5, 22),
             Selector("Bright", BRIGHTNESS_OPTIONS,
                      self._brightness_index(brightness), 5, 32),
             Selector("Sleep", ["off", "30s", "60s"],
@@ -71,7 +75,6 @@ class Settings(App):
             "sleep_timeout": timeout,
             "sound_enabled": sound == "on",
         })
-        # Apply brightness live so the change is visible immediately.
         self.context.power.set_brightness(brightness)
         if self.context.display:
             self.context.display.set_brightness(brightness)
