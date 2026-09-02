@@ -36,6 +36,18 @@ class Page:
     def on_resume(self):
         self.invalidate()
 
+    def on_suspend(self):
+        """Called when the page is pushed behind another in the stack.
+        Override to release heavy resources (caches, large lists).
+        Default implementation does nothing — safe for all existing apps."""
+        pass
+
+    def on_restore(self):
+        """Called when the page becomes visible again after suspension.
+        Override to rebuild resources released in on_suspend().
+        Default implementation does nothing."""
+        pass
+
     def open(self):
         pass
 
