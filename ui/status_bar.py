@@ -35,6 +35,8 @@ class StatusBar(Widget):
         self.current_batt = None
         self.blink_on = True
         self._blink_ms = 0
+        self._batt_text = None
+        self._batt_text_val = None
 
     def update(self, delta_ms=0):
         changed = False
@@ -102,7 +104,10 @@ class StatusBar(Widget):
             return
         if batt <= LOW_PERCENT and not self.blink_on:
             return
-        text = "%d%%" % batt
+        if self._batt_text_val != batt:
+            self._batt_text_val = batt
+            self._batt_text = "%d%%" % batt
+        text = self._batt_text
         display.text_small(text, 128 - len(text) * 8, 1)
 
     @staticmethod
