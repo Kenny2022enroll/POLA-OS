@@ -3,11 +3,9 @@ from core.event import BACK, SELECT
 
 class ErrorPage(Page):
     """Dialog shown when an application raises an unhandled exception.
-
-    It replaces the crashed page in the navigation stack, so pressing BACK
-    returns to whatever healthy page was underneath.
-    """
+    Content starts below the kernel status strip (y >= 12)."""
     name = "Error"
+
     def __init__(self, app_name, exc):
         super().__init__()
         self.app_name = self._clip(app_name or "App")
@@ -15,7 +13,6 @@ class ErrorPage(Page):
 
     @staticmethod
     def _describe(exc):
-        # Best-effort extraction that must never raise itself.
         try:
             etype = type(exc).__name__
         except Exception:
@@ -28,18 +25,16 @@ class ErrorPage(Page):
 
     @staticmethod
     def _clip(text):
-        # 128px wide at ~8px per glyph fits 16 characters per row.
         return text[:16]
 
     def on_event(self, event):
-        # Confirm or back both dismiss the dialog.
         if event.type == BACK or event.type == SELECT:
             return BACK
         return None
 
     def draw(self, display):
-        display.text("! App error", 0, 2)
-        display.text(self._clip(self.app_name), 0, 14)
-        display.text(self._clip(self.exc_type), 0, 26)
-        display.text(self.exc_msg[:16], 0, 38)
-        display.text(self.exc_msg[16:32], 0, 50)
+        display.text("! App error", 0, 12)
+        display.text(self._clip(self.app_name), 0, 23)
+        display.text(self._clip(self.exc_type), 0, 34)
+        display.text(self.exc_msg[:16], 0, 45)
+        display.text(self.exc_msg[16:32], 0, 54)
