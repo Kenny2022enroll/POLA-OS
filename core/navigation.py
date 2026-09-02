@@ -44,10 +44,13 @@ class Navigation:
         current = self.current()
         if current:
             current.on_pause()
+            try:
+                current.on_suspend()
+            except Exception:
+                pass
         self.stack.append(page)
         self._enforce_depth()
         if current is not None and current not in self.stack:
-            # The depth limit evicted the previous page; skip the transition.
             current = None
         page.on_enter()
         self._start_transition(current, page, 1)
@@ -60,6 +63,10 @@ class Navigation:
         old.on_leave()
         current = self.current()
         if current:
+            try:
+                current.on_restore()
+            except Exception:
+                pass
             current.on_resume()
         self._start_transition(old, current, -1)
         return old
