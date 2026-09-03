@@ -5,9 +5,10 @@ from ui.window import Window
 from ui.label import Label
 from ui.selector import Selector
 
-BRIGHTNESS_OPTIONS = ["25", "50", "80", "100"]
-# "icon" selects the iPod Cover Flow desktop.
-HOME_OPTIONS = ["default", "minimal", "icon"]
+# Brightness follows the light sensor automatically and the desktop is
+# always the Cover Flow carousel, so neither has a setting here anymore.
+SLEEP_OPTIONS = ["off", "30s", "60s"]
+SOUND_OPTIONS = ["on", "off"]
 
 class Settings(App):
     name = "Settings"
@@ -18,37 +19,18 @@ class Settings(App):
 
     def open(self):
         config = self.context.config if self.context else None
-        home_style = config.get("home_style", "default") if config else "default"
-        sound = config.get("sound_enabled", True) if config else True
         timeout = config.get("sleep_timeout", 60) if config else 60
-        brightness = config.get("brightness", 80) if config else 80
-        if home_style not in HOME_OPTIONS:
-            home_style = "default"
+        sound = config.get("sound_enabled", True) if config else True
         self.selectors = [
-            Selector("Home", HOME_OPTIONS,
-                     HOME_OPTIONS.index(home_style), 5, 22),
-            Selector("Bright", BRIGHTNESS_OPTIONS,
-                     self._brightness_index(brightness), 5, 32),
-            Selector("Sleep", ["off", "30s", "60s"],
-                     {0: 0, 30: 1, 60: 2}.get(timeout, 2), 5, 42),
-            Selector("Sound", ["on", "off"], 0 if sound else 1, 5, 52),
+            Selector("Sleep", SLEEP_OPTIONS,
+                     {0: 0, 30: 1, 60: 2}.get(timeout, 2), 5, 26),
+            Selector("Sound", SOUND_OPTIONS, 0 if sound else 1, 5, 40),
         ]
         self.window = Window()
         self.window.add(Label("Settings", 30, Theme.TITLE_Y))
         for selector in self.selectors:
             self.window.add(selector)
         self._sync_selection()
-
-    @staticmethod
-    def _brightness_index(value):
-        best = 0
-        best_gap = None
-        for i, option in enumerate(BRIGHTNESS_OPTIONS):
-            gap = abs(int(option) - value)
-            if best_gap is None or gap < best_gap:
-                best_gap = gap
-                best = i
-        return best
 
     def _sync_selection(self):
         for i, selector in enumerate(self.selectors):
@@ -66,18 +48,12 @@ class Settings(App):
     def _save(self):
         if not self.context or not self.selectors:
             return
-        home, bright, sleep, sound = [item.value for item in self.selectors]
+        sleep, sound = [item.value for item in self.selectors]
         timeout = {"off": 0, "30s": 30, "60s": 60}[sleep]
-        brightness = int(bright)
         self.context.config.update({
-            "home_style": home,
-            "brightness": brightness,
             "sleep_timeout": timeout,
             "sound_enabled": sound == "on",
         })
-        self.context.power.set_brightness(brightness)
-        if self.context.display:
-            self.context.display.set_brightness(brightness)
 
     def on_event(self, event):
         if event.type == BACK:
@@ -102,3 +78,25 @@ class Settings(App):
     def draw(self, display):
         display.text("*", 0, self.selectors[self.index].y)
         self.window.draw(display)
+
+
+def _icon(canvas):
+    canvas.fill_circle(12, 12, 7)
+    canvas.clear_circle(12, 12, 3)
+    for dx, dy in ((8, 0), (6, 6), (0, 8), (-6, 6),
+                   (-8, 0), (-6, -6), (0, -8), (6, -6)):
+        cx = 12 + dx
+        cy = 12 + dy
+        for ty in range(cy - 1, cy + 2):
+            for tx in range(cx - 1, cx + 2):
+                canvas.pixel(tx, ty)
+
+
+MANIFEST = {
+    "name": "Settings",
+    "version": "0.2",
+    "description": "Sleep timeout and sound switch",
+    "icon": _icon,
+}
+
+APP_CLASS = Settings
