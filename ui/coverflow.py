@@ -37,10 +37,15 @@ def _band_masks(h):
 
 
 class CoverFlow:
-    """iPod Cover Flow style app carousel for the system desktop."""
+    """iPod Cover Flow style app carousel for the system desktop.
 
-    def __init__(self, names):
-        self.items = list(names)
+    ``items`` is a list of ``AppInfo`` entries; each app supplies its
+    own icon builder through its manifest, so the desktop never ships
+    icons of its own.
+    """
+
+    def __init__(self, items):
+        self.items = list(items)
         self.target = 0
         self.pos = 0
         # Pre-allocated buffers to avoid per-frame heap allocation
@@ -125,8 +130,8 @@ class CoverFlow:
         self._draw_caption(display)
 
     def _draw_center(self, display, index):
-        name = self.items[index]
-        data, width, height = get_icon(name)
+        info = self.items[index]
+        data, width, height = get_icon(info.name, info.icon)
         x = CENTER_X - width // 2
         display.rect(x - 2, ICON_TOP - 2, width + 4, height + 4)
         display.blit(data, x, ICON_TOP, width, height)
@@ -141,8 +146,8 @@ class CoverFlow:
                         display.pixel(x + c, y)
 
     def _draw_side(self, display, index, d):
-        name = self.items[index]
-        cols = get_columns(name)
+        info = self.items[index]
+        cols = get_columns(info.name, info.icon)
         sigma = -1 if d > 0 else 1
         ad = d if d > 0 else -d
         s = ad if ad < STEP else STEP
@@ -193,7 +198,7 @@ class CoverFlow:
                 j += 1
 
     def _draw_caption(self, display):
-        name = self.items[self.selected()]
+        name = self.items[self.selected()].name
         if len(name) > NAME_MAX_CHARS:
             name = name[:NAME_MAX_CHARS]
         width = len(name) * 8
