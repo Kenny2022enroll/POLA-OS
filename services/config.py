@@ -5,8 +5,8 @@ except ImportError:
 import os
 
 DEFAULTS = {
-    "home_style": "default",
-    "brightness": 80,
+    # Brightness is automatic (light sensor) and the desktop is always
+    # Cover Flow, so neither appears here anymore.
     "sleep_timeout": 60,
     "sound_enabled": True,
 }
