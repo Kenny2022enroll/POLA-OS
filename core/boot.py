@@ -7,6 +7,7 @@ from core.navigation import Navigation
 from core.kernel import Kernel
 from apps.registry import load_apps
 from apps.home import Home
+from plugins.loader import load_plugins
 from services.context import SystemContext
 from ui.status_bar import StatusBar
 
@@ -15,16 +16,13 @@ class Boot:
         self.context = SystemContext()
         self.display = Display()
         self.context.display = self.display
-        # 25 FPS keeps animations smooth while the dirty-region renderer
-        # keeps idle frames nearly free.
-        self.scheduler = Scheduler(fps=25)
+        self.scheduler = Scheduler(fps=25, idle_fps=10)
         self.events = EventManager()
         self.input = Input(self.events)
-        # Kernel-owned chrome: time, touch highlight and battery gauge.
         self.status_bar = StatusBar(self.context.clock,
                                     self.context.battery, self.input)
         self.app_manager = AppManager()
-        self.app_manager.load(load_apps())
+        self.app_manager.load(load_apps() + load_plugins())
         self.navigation = Navigation(transition_ms=120)
         self.navigation.push(Home(self.app_manager, self.navigation, self.context))
         self.kernel = Kernel(
@@ -39,7 +37,9 @@ class Boot:
         self._apply_boot_brightness()
 
     def _apply_boot_brightness(self):
-        level = self.context.config.get("brightness", 80)
+        if self.context.ambient.available():
+            return
+        level = 80
         self.context.power.set_brightness(level)
         self.display.set_brightness(level)
 
