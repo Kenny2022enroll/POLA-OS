@@ -1,5 +1,3 @@
-# Procedurally rendered 24x24 monochrome app icons for Cover Flow.
-
 ICON_SIZE = 24
 
 _cache = {}
@@ -7,8 +5,6 @@ _column_cache = {}
 
 
 class _Canvas:
-    """24x24 1-bit canvas with integer rows (MSB = leftmost px)."""
-
     def __init__(self, size=ICON_SIZE):
         self.size = size
         self.rows = [0] * size
@@ -96,70 +92,30 @@ class _Canvas:
         return out
 
 
-def _draw_timer(c):
-    c.circle(12, 12, 9)
-    c.vline(12, 3, 2)
-    c.vline(12, 19, 2)
-    c.hline(3, 12, 2)
-    c.hline(19, 12, 2)
-    c.line(12, 12, 12, 6)
-    c.line(12, 12, 16, 12)
-    c.pixel(12, 12)
+def render_icon(builder):
+    canvas = _Canvas()
+    if callable(builder):
+        try:
+            builder(canvas)
+        except Exception:
+            canvas = _Canvas()
+    return canvas.to_bytes()
 
 
-def _draw_stopwatch(c):
-    c.circle(12, 13, 8)
-    c.vline(11, 3, 2)
-    c.vline(12, 3, 2)
-    c.hline(9, 2, 6)
-    c.line(18, 6, 20, 4)
-    c.line(12, 13, 15, 9)
-    c.pixel(12, 13)
-
-
-def _draw_settings(c):
-    c.fill_circle(12, 12, 7)
-    c.clear_circle(12, 12, 3)
-    for dx, dy in ((8, 0), (6, 6), (0, 8), (-6, 6),
-                   (-8, 0), (-6, -6), (0, -8), (6, -6)):
-        cx = 12 + dx
-        cy = 12 + dy
-        for ty in range(cy - 1, cy + 2):
-            for tx in range(cx - 1, cx + 2):
-                c.pixel(tx, ty)
-
-
-def _draw_default(c):
-    c.rect(4, 4, 6, 6)
-    c.rect(14, 4, 6, 6)
-    c.rect(4, 14, 6, 6)
-    c.rect(14, 14, 6, 6)
-
-
-_BUILDERS = {
-    "timer": _draw_timer,
-    "stopwatch": _draw_stopwatch,
-    "settings": _draw_settings,
-}
-
-
-def get_icon(name):
+def get_icon(name, builder=None):
     key = (name or "").strip().lower()
     icon = _cache.get(key)
     if icon is None:
-        canvas = _Canvas()
-        builder = _BUILDERS.get(key, _draw_default)
-        builder(canvas)
-        icon = (canvas.to_bytes(), ICON_SIZE, ICON_SIZE)
+        icon = (render_icon(builder), ICON_SIZE, ICON_SIZE)
         _cache[key] = icon
     return icon
 
 
-def get_columns(name):
+def get_columns(name, builder=None):
     key = (name or "").strip().lower()
     cols = _column_cache.get(key)
     if cols is None:
-        data, width, height = get_icon(key)
+        data, width, height = get_icon(key, builder)
         cols = [0] * width
         for x in range(width):
             column = 0
