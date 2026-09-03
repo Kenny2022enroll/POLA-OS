@@ -4,6 +4,7 @@ from ui.theme import Theme
 
 class Kernel:
     RECLAIM_INTERVAL_MS = 500
+    BUSY_HOLD_MS = 500
 
     def __init__(self, display, scheduler, input, events, navigation,
                  context=None, status_bar=None):
@@ -18,6 +19,7 @@ class Kernel:
         self.sleep_drawn = False
         self.wake_armed = False
         self.last_reclaim = time.ticks_ms()
+        self.busy_until = time.ticks_add(time.ticks_ms(), 2000)
 
     def _reclaim(self, force=False):
         if self.context and hasattr(self.context, "memory"):
@@ -104,7 +106,6 @@ class Kernel:
             self._draw_full(page)
             return
         if rect is None:
-            # Chrome-only update: repaint just the reserved strip.
             self.display.begin_frame()
             self.display.clear_region((0, 0, self.display.WIDTH, strip_h))
             self.status_bar.draw(self.display)
@@ -153,7 +154,6 @@ class Kernel:
             self._draw_transition()
             self._transition_was_active = True
             return
-        # First frame after transition ends: reclaim temp objects
         if getattr(self, '_transition_was_active', False):
             self._transition_was_active = False
             self._reclaim(force=True)
@@ -164,6 +164,20 @@ class Kernel:
         while True:
             self.step()
 
+    def _update_ambient(self, delta_ms, sleeping):
+        ambient = self.context.ambient
+        target = ambient.update(delta_ms, sleeping)
+        if target is None:
+            return
+        self.context.power.set_brightness(target)
+        self._apply_brightness()
+
+    def _update_rate(self, busy):
+        now = time.ticks_ms()
+        if busy:
+            self.busy_until = time.ticks_add(now, self.BUSY_HOLD_MS)
+        self.scheduler.set_idle(time.ticks_diff(self.busy_until, now) <= 0)
+
     def step(self):
         delta_ms = self.scheduler.wait()
         active = self.input.update()
@@ -173,6 +187,7 @@ class Kernel:
             timeout = self.context.config.get("sleep_timeout", 60)
             power.update(delta_ms, timeout)
             self.context.battery.update(delta_ms, power.is_sleeping())
+            self._update_ambient(delta_ms, power.is_sleeping())
             if power.is_sleeping():
                 if power.observe_wake(active, delta_ms):
                     power.wake()
@@ -190,13 +205,16 @@ class Kernel:
                         self.display.clear()
                         self.display.update()
                         self.sleep_drawn = True
+                    self._update_rate(False)
                     return
             self._reclaim_tick()
 
         status_changed = (self.status_bar.update(delta_ms)
                           if self.status_bar is not None else False)
 
+        events_seen = 0
         while event:
+            events_seen += 1
             if self._dispatch(event):
                 break
             event = self.events.poll()
@@ -212,6 +230,9 @@ class Kernel:
         if changed:
             page.invalidate(changed if isinstance(changed, tuple) else None)
         transition_active = self.navigation.update(delta_ms)
+        self._update_rate(bool(events_seen) or bool(changed)
+                          or status_changed or transition_active
+                          or self.input.states != 0)
         try:
             self._render(page, transition_active, status_changed)
         except Exception as exc:
