@@ -1,7 +1,8 @@
 ICON_SIZE = 24
 
+# One cache entry per icon: [bitmap bytes, column index or None].
+# Columns are derived on demand for the Cover Flow side rendering.
 _cache = {}
-_column_cache = {}
 
 
 class _Canvas:
@@ -102,20 +103,27 @@ def render_icon(builder):
     return canvas.to_bytes()
 
 
-def get_icon(name, builder=None):
+def _entry(name, builder):
     key = (name or "").strip().lower()
-    icon = _cache.get(key)
-    if icon is None:
-        icon = (render_icon(builder), ICON_SIZE, ICON_SIZE)
-        _cache[key] = icon
-    return icon
+    entry = _cache.get(key)
+    if entry is None:
+        entry = [render_icon(builder), None]
+        _cache[key] = entry
+    return entry
+
+
+def get_icon(name, builder=None):
+    entry = _entry(name, builder)
+    return entry[0], ICON_SIZE, ICON_SIZE
 
 
 def get_columns(name, builder=None):
-    key = (name or "").strip().lower()
-    cols = _column_cache.get(key)
+    entry = _entry(name, builder)
+    cols = entry[1]
     if cols is None:
-        data, width, height = get_icon(key, builder)
+        data = entry[0]
+        width = ICON_SIZE
+        height = ICON_SIZE
         cols = [0] * width
         for x in range(width):
             column = 0
@@ -124,5 +132,5 @@ def get_columns(name, builder=None):
                 if byte & (0x80 >> (x & 7)):
                     column |= 1 << (height - 1 - y)
             cols[x] = column
-        _column_cache[key] = cols
+        entry[1] = cols
     return cols
