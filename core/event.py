@@ -7,24 +7,16 @@ SELECT = "select"
 BACK = "back"
 NAV_NEXT = "nav_next"
 NAV_PREVIOUS = "nav_previous"
-UP = "up"
-DOWN = "down"
-LEFT = "left"
-RIGHT = "right"
-
-# Legacy names remain available for existing apps.
-BUTTON_A = SELECT
-BUTTON_B = NAV_NEXT
-BUTTON_UP = UP
-BUTTON_DOWN = DOWN
-BUTTON_LEFT = LEFT
-BUTTON_RIGHT = RIGHT
 
 
 class EventManager:
-    """Small fixed-size FIFO without list shifting on every event."""
+    """Small fixed-size FIFO without list shifting on every event.
 
-    def __init__(self, max_size=32):
+    Input produces at most a couple of one-shot events per frame, so a
+    shallow queue is enough; the oldest event is dropped on overflow.
+    """
+
+    def __init__(self, max_size=8):
         self.max_size = max_size
         self.buffer = [None] * max_size
         self.head = 0
