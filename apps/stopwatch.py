@@ -64,21 +64,4 @@ class Stopwatch(App):
         self.status.draw(display)
 
 
-def _icon(canvas):
-    canvas.circle(12, 13, 8)
-    canvas.vline(11, 3, 2)
-    canvas.vline(12, 3, 2)
-    canvas.hline(9, 2, 6)
-    canvas.line(18, 6, 20, 4)
-    canvas.line(12, 13, 15, 9)
-    canvas.pixel(12, 13)
-
-
-MANIFEST = {
-    "name": "Stopwatch",
-    "version": "0.2",
-    "description": "Stopwatch with pause and reset",
-    "icon": _icon,
-}
-
 APP_CLASS = Stopwatch
