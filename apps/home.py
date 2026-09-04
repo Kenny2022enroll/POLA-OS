@@ -1,10 +1,10 @@
-from core.app import App
+from core.page import Page
 from core.event import SELECT, NAV_NEXT, NAV_PREVIOUS
 from ui.theme import Theme
 from ui.coverflow import CoverFlow
 
 
-class Home(App):
+class Home(Page):
     """System desktop: a Cover Flow carousel of registered apps.
 
     O/N browse, T+H launches the selected app. App icons come from the
@@ -40,8 +40,13 @@ class Home(App):
             flow.previous()
         elif event.type == SELECT:
             self._last_index = flow.selected()
-            self.navigation.push(
-                self.app_manager.create(flow.selected(), self.context))
+            try:
+                page = self.app_manager.create(flow.selected(), self.context)
+            except Exception:
+                # A plugin whose app module fails to import simply does
+                # not launch; the desktop itself must keep working.
+                return
+            self.navigation.push(page)
 
     def on_resume(self):
         if self.coverflow is None:
