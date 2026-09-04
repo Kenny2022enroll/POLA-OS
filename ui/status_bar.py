@@ -1,4 +1,3 @@
-from ui.widget import Widget
 from ui.theme import Theme
 
 PAD_LABELS = "PYTHON"
@@ -21,11 +20,14 @@ BOLT_ROWS = (
 )
 
 
-class StatusBar(Widget):
-    """Kernel-owned chrome strip: clock, touch highlight, battery."""
+class StatusBar:
+    """Kernel-owned chrome strip: clock, touch highlight, battery.
+
+    Deliberately not a Widget: the strip is fixed chrome, and skipping
+    the base class keeps ui.widget out of the boot-time import path.
+    """
 
     def __init__(self, clock=None, battery=None, input=None, text="POLA-OS"):
-        super().__init__(0, 0, 128, Theme.STRIP_HEIGHT)
         self.clock = clock
         self.battery = battery
         self.input = input
