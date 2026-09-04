@@ -1,14 +1,14 @@
-from drivers.display import Display
-from drivers.input import Input
-from core.scheduler import Scheduler
+from drivers import Display
+from drivers import Input
+from core.kernel import Scheduler
 from core.event import EventManager
 from core.app_manager import AppManager
 from core.navigation import Navigation
 from core.kernel import Kernel
 from apps.registry import load_apps
 from apps.home import Home
-from plugins.loader import load_plugins
-from services.context import SystemContext
+from plugins import load_plugins
+from services import SystemContext
 from ui.status_bar import StatusBar
 
 class Boot:
