@@ -218,16 +218,4 @@ class FileManager(App):
         display.text(self._footer(), 0, Theme.FOOTER_Y)
 
 
-def _icon(canvas):
-    canvas.rect(3, 5, 9, 5)
-    canvas.rect(3, 9, 18, 10)
-
-
-MANIFEST = {
-    "name": "Files",
-    "version": "0.1",
-    "description": "Browse directories, view sizes, delete files",
-    "icon": _icon,
-}
-
 APP_CLASS = FileManager
