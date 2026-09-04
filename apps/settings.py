@@ -80,23 +80,4 @@ class Settings(App):
         self.window.draw(display)
 
 
-def _icon(canvas):
-    canvas.fill_circle(12, 12, 7)
-    canvas.clear_circle(12, 12, 3)
-    for dx, dy in ((8, 0), (6, 6), (0, 8), (-6, 6),
-                   (-8, 0), (-6, -6), (0, -8), (6, -6)):
-        cx = 12 + dx
-        cy = 12 + dy
-        for ty in range(cy - 1, cy + 2):
-            for tx in range(cx - 1, cx + 2):
-                canvas.pixel(tx, ty)
-
-
-MANIFEST = {
-    "name": "Settings",
-    "version": "0.2",
-    "description": "Sleep timeout and sound switch",
-    "icon": _icon,
-}
-
 APP_CLASS = Settings
