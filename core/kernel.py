@@ -2,6 +2,36 @@ import time
 from core.event import BACK
 from ui.theme import Theme
 
+
+class Scheduler:
+    """Adaptive frame scheduler.
+
+    The kernel keeps two rates: a fast one for animations, transitions
+    and active touch, and a slow idle one when nothing on screen is
+    changing. Switching is done with ``set_idle()``; ``wait()`` always
+    paces against whichever interval is currently selected, so idle
+    frames cost the CPU far less than a fixed 25 FPS loop.
+    """
+    def __init__(self, fps=25, idle_fps=10):
+        self.fast_interval = 1000 // fps
+        self.idle_interval = 1000 // idle_fps
+        self.interval = self.fast_interval
+        self.last = time.ticks_ms()
+
+    def set_idle(self, idle):
+        self.interval = self.idle_interval if idle else self.fast_interval
+
+    def wait(self):
+        now = time.ticks_ms()
+        delta = time.ticks_diff(now, self.last)
+        if delta < self.interval:
+            time.sleep_ms(self.interval - delta)
+        now = time.ticks_ms()
+        elapsed = time.ticks_diff(now, self.last)
+        self.last = now
+        return elapsed
+
+
 class Kernel:
     RECLAIM_INTERVAL_MS = 500
     BUSY_HOLD_MS = 500
@@ -20,6 +50,7 @@ class Kernel:
         self.wake_armed = False
         self.last_reclaim = time.ticks_ms()
         self.busy_until = time.ticks_add(time.ticks_ms(), 2000)
+        self._transition_was_active = False
 
     def _reclaim(self, force=False):
         if self.context and hasattr(self.context, "memory"):
@@ -107,7 +138,7 @@ class Kernel:
             return
         if rect is None:
             self.display.begin_frame()
-            self.display.clear_region((0, 0, self.display.WIDTH, strip_h))
+            self.display.clear((0, 0, self.display.WIDTH, strip_h))
             self.status_bar.draw(self.display)
             self.display.update()
             return
@@ -116,7 +147,7 @@ class Kernel:
             bottom = y + h
             rect = (0, 0, self.display.WIDTH, bottom if bottom > strip_h else strip_h)
         self.display.begin_frame()
-        self.display.clear_region(rect)
+        self.display.clear(rect)
         page.draw_dirty(self.display, rect)
         if self.status_bar is not None and rect[1] < strip_h:
             self.status_bar.draw(self.display)
@@ -154,7 +185,7 @@ class Kernel:
             self._draw_transition()
             self._transition_was_active = True
             return
-        if getattr(self, '_transition_was_active', False):
+        if self._transition_was_active:
             self._transition_was_active = False
             self._reclaim(force=True)
         self._draw_dirty(page, status_changed)
