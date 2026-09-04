@@ -18,21 +18,19 @@ SNAP_DIST = 32
 STEP = 1024
 
 
-_band_cache = {}
-
-
 def _band_masks(h):
-    """Per-output-row source-band bitmasks for vertical scale 24 -> h."""
-    masks = _band_cache.get(h)
-    if masks is None:
-        masks = []
-        for j in range(h):
-            y0 = (j * ICON_SIZE) // h
-            y1 = (((j + 1) * ICON_SIZE) // h) - 1
-            top = ICON_SIZE - 1 - y0
-            lo = ICON_SIZE - 1 - y1
-            masks.append(((1 << (top - lo + 1)) - 1) << lo)
-        _band_cache[h] = masks
+    """Per-output-row source-band bitmasks for vertical scale 24 -> h.
+
+    Computed on demand (h only spans a handful of values) instead of
+    being cached forever, keeping the desktop's idle RAM lower.
+    """
+    masks = []
+    for j in range(h):
+        y0 = (j * ICON_SIZE) // h
+        y1 = (((j + 1) * ICON_SIZE) // h) - 1
+        top = ICON_SIZE - 1 - y0
+        lo = ICON_SIZE - 1 - y1
+        masks.append(((1 << (top - lo + 1)) - 1) << lo)
     return masks
 
 
@@ -48,8 +46,9 @@ class CoverFlow:
         self.items = list(items)
         self.target = 0
         self.pos = 0
-        # Pre-allocated buffers to avoid per-frame heap allocation
-        self._sort_buf = [[0, 0, 0] for _ in range(8)]
+        # Pre-allocated buffers to avoid per-frame heap allocation.
+        # The culling window shows at most 5 icons (center + 2 per side).
+        self._sort_buf = [[0, 0, 0] for _ in range(5)]
         self._union_cols = [0] * ICON_SIZE
 
     def count(self):
