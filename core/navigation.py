@@ -71,15 +71,6 @@ class Navigation:
         self._start_transition(old, current, -1)
         return old
 
-    def replace(self, page):
-        old = self.current()
-        if self.stack:
-            self.stack.pop()
-            old.on_leave()
-        self.stack.append(page)
-        page.on_enter()
-        self._start_transition(old, page, 1)
-
     def remove(self, page):
         """Remove a specific page (e.g. one that crashed) from the stack."""
         if page not in self.stack:
