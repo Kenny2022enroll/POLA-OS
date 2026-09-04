@@ -1,7 +1,6 @@
 class Page:
     """Base page with lifecycle, invalidation and transition hooks."""
     def __init__(self):
-        self.running = True
         self.context = None
         self.dirty = True
         self.full_redraw = True
@@ -30,47 +29,22 @@ class Page:
     def on_leave(self):
         self.close()
 
-    def on_pause(self):
-        pass
-
     def on_resume(self):
         self.invalidate()
 
-    def on_suspend(self):
-        """Called when the page is pushed behind another in the stack.
-        Override to release heavy resources (caches, large lists).
-        Default implementation does nothing — safe for all existing apps."""
+    # Default no-op hooks share one function object to save RAM; apps
+    # override whichever they need.
+    def _noop(self, *args):
         pass
 
-    def on_restore(self):
-        """Called when the page becomes visible again after suspension.
-        Override to rebuild resources released in on_suspend().
-        Default implementation does nothing."""
-        pass
-
-    def open(self):
-        pass
-
-    def close(self):
-        pass
-
-    def update(self, delta_ms=0):
-        pass
-
-    def on_event(self, event):
-        pass
-
-    def draw(self, display):
-        pass
+    on_pause = _noop
+    on_suspend = _noop
+    on_restore = _noop
+    open = _noop
+    close = _noop
+    update = _noop
+    on_event = _noop
+    draw = _noop
 
     def draw_dirty(self, display, rect):
         self.draw(display)
-
-    def transition_in(self, progress):
-        return None
-
-    def transition_out(self, progress):
-        return None
-
-    def exit(self):
-        self.running = False
