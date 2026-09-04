@@ -138,22 +138,4 @@ class Timer(App):
         self.number.draw(display)
 
 
-def _icon(canvas):
-    canvas.circle(12, 12, 9)
-    canvas.vline(12, 3, 2)
-    canvas.vline(12, 19, 2)
-    canvas.hline(3, 12, 2)
-    canvas.hline(19, 12, 2)
-    canvas.line(12, 12, 12, 6)
-    canvas.line(12, 12, 16, 12)
-    canvas.pixel(12, 12)
-
-
-MANIFEST = {
-    "name": "Timer",
-    "version": "0.2",
-    "description": "Countdown timer with presets",
-    "icon": _icon,
-}
-
 APP_CLASS = Timer
