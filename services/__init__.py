@@ -147,9 +147,9 @@ class MemoryService:
     """Heap watchdog that reclaims large objects before they exhaust RAM.
 
     Embedded ESP32 heaps fragment easily when big pages (frame buffers,
-    item lists) are created and destroyed. This service nudges the runtime
-    to collect earlier and performs an explicit full collection when free
-    memory falls below a low-water mark.
+    item lists) are created and destroyed. This service performs an
+    explicit full collection when free memory falls below a low-water
+    mark.
     """
     # Collect when free heap drops below this many bytes.
     LOW_WATER = 6144
@@ -158,12 +158,11 @@ class MemoryService:
         if low_water is not None:
             self.LOW_WATER = low_water
         self.last_collect_ms = time.ticks_ms()
-        # Ask the runtime to run its own GC before large allocations
-        # exhaust the heap, so evicted page objects are reclaimed promptly.
-        try:
-            gc.threshold(self.LOW_WATER)
-        except Exception:
-            pass
+        # No gc.threshold() here: it triggers a collection after N bytes
+        # *allocated* since the last one (not a free-memory water mark)
+        # and bypasses MIN_INTERVAL_MS, so the render loop would collect
+        # every few frames. Low-water collection lives in
+        # pressure()/collect_if_needed() below.
 
     def free(self):
         try:

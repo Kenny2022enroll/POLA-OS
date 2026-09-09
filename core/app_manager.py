@@ -53,4 +53,6 @@ class AppManager:
         info = self.apps[index]
         app = self._resolve(info)()
         app.context = context
+        # Remember the registry entry so App can unload the module on exit.
+        app.app_info = info
         return app
